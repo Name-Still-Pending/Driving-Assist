@@ -1,0 +1,25 @@
+{
+  "categories": [
+    {
+      "id": 0,
+      "name": "vehicle_ign"
+    },
+    {
+      "id": 1,
+      "name": "vehicle_l"
+    },
+    {
+      "id": 2,
+      "name": "vehicle_r"
+    },
+    {
+      "id": 3,
+      "name": "vehicle_s"
+    }
+  ],
+  "info": {
+    "year": 2023,
+    "version": "1.0",
+    "contributor": "Label Studio"
+  }
+}

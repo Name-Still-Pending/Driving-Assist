@@ -1,0 +1,5 @@
+train: ../train/images
+val: ../valid/images
+
+nc: 4
+names: [vehicle_ign, vehicle_l, vehicle_r, vehicle_s]
