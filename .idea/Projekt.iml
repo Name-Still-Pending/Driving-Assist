@@ -8,6 +8,7 @@
       <excludeFolder url="file://$MODULE_DIR$/poročila" />
       <excludeFolder url="file://$MODULE_DIR$/yolo/mlenv" />
       <excludeFolder url="file://$MODULE_DIR$/video" />
+      <excludeFolder url="file://$MODULE_DIR$/temp" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11 (mlenv)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
