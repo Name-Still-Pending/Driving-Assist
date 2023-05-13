@@ -26,7 +26,7 @@
     ```
 3. Start docker images for kafka, redis...:
    ```
-    docker-compose up
+    sudo docker-compose up
    ```
 4. run python scripts:
    ```

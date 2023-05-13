@@ -1,0 +1,10 @@
+global:
+  scrape_interval:     15s
+
+scrape_configs:
+  - job_name: "kafka"
+    static_configs:
+      - targets: ['kafka:8181']
+  - job_name: 'python-neuralnetwork'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
