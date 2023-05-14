@@ -9,6 +9,7 @@ import time
 import kafka
 import encoding.JSON as je
 
+
 def thread_produce():
     # Redis
     red = redis.Redis()
@@ -30,6 +31,7 @@ def thread_produce():
         if not ret:
             vc.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
+        # Prepare message
         message = {
             "id": "new_frame",
             "frame_n": int(vc.get(cv2.CAP_PROP_POS_FRAMES))
@@ -60,10 +62,12 @@ def thread_produce():
             vc.release()
             break    
 
+
 def sigint_handler(signum, frame):
     event.set()
     thread.join()
     exit(0)
+
 
 signal.signal(signal.SIGINT, sigint_handler)
 
