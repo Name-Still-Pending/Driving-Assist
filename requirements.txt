@@ -5,6 +5,7 @@ autocommand==2.2.2
 backcall==0.2.0
 Brlapi==0.8.4
 btrfsutil==6.3
+build==0.10.0
 chardet==5.1.0
 cmake==3.26.3
 contourpy==1.0.7
@@ -76,6 +77,7 @@ pyenchant==3.2.2
 Pygments==2.15.1
 PyGObject==3.44.1
 pyparsing==3.0.9
+pyproject_hooks==1.0.0
 PyQt5==5.15.9
 PyQt5-sip==12.12.1
 python-dateutil==2.8.2
@@ -106,3 +108,7 @@ tzdata==2023.3
 urllib3==1.26.15
 validate-pyproject==0.12.2.post1.dev0+g2940279.d20230508
 wcwidth==0.2.6
+
+setuptools~=65.5.1
+redis~=4.5.5
+kafka-python~=2.0.2
