@@ -2,3 +2,4 @@
 /poročila/
 /video/
 docker-compose.yaml
+/object_recognition/yolov5n.pt

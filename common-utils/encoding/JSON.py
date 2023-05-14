@@ -1,11 +1,11 @@
 import json
 
 
-def json_encode(obj: {}):
+def encode_bin(obj: {}):
     return json.dumps(obj).encode("utf-8")
 
 
-def json_decode(obj: bin):
+def decode_bin(obj: bin):
     return json.loads(obj.decode("utf-8"))
 
 

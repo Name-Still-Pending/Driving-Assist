@@ -1,4 +1,4 @@
-import json
+import encoding
 
 import numpy as np
 import cv2
@@ -7,7 +7,7 @@ import redis
 import signal
 import time
 import kafka
-import custom_utils as cu
+import encoding.JSON as je
 
 def thread_produce():
     # Redis
@@ -39,7 +39,7 @@ def thread_produce():
         red.set("frame:latest", np.array(frame).tobytes())
 
         # Send notification about new frame over Kafka
-        future = producer.send(topic, cu.json_encode(message), timestamp_ms=round(time.time()*1000))
+        future = producer.send(topic, je.encode_bin(message), timestamp_ms=round(time.time() * 1000))
 
         # Wait until message is delivered to Kafka
         try:

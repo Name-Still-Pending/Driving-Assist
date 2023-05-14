@@ -5,8 +5,8 @@ import redis
 import kafka
 import signal
 from datetime import datetime
-import json
-import custom_utils as cu
+import encoding.JSON as je
+
 
 # Global detection list
 # TODO: Using globals is not the best solution, modify this
@@ -61,7 +61,7 @@ def thread_frames():
         # Read from Redis when message is received over Kafka
         consumer.seek_to_end()
         for raw_message in consumer:
-            msg_dict = cu.json_decode(raw_message.value)
+            msg_dict = je.decode_bin(raw_message.value)
             message = msg_dict["id"]
 
             if message == "new_frame":

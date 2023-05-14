@@ -7,8 +7,10 @@ import signal
 from datetime import datetime
 import time
 import torch
-import json
-import custom_utils as cu
+import encoding.JSON as je
+from prometheus_client import start_http_server, Counter
+
+counter_neuralnetwork = Counter('nn_detections', 'Number of NN detections')
 
 
 def thread_do_work():
@@ -32,7 +34,7 @@ def thread_do_work():
         # Read from Redis when message is received over Kafka
         consumer.seek_to_end()
         for raw_message in consumer:
-            msgJSON = cu.json_decode(raw_message.value)
+            msgJSON = je.decode_bin(raw_message.value)
             message = msgJSON["id"]
 
             if message == "new_frame":
@@ -69,6 +71,8 @@ def thread_do_work():
                         except kafka.KafkaError:
                             pass
 
+                    counter_neuralnetwork.inc(1)
+
         if event.is_set():
             break
 
@@ -89,6 +93,8 @@ event = threading.Event()
 thread = threading.Thread(target=lambda: thread_do_work())
 
 if __name__ == "__main__":
+    start_http_server(8000)
+
     thread.start()
     input("Press CTRL+C or Enter to stop visualization...")
     event.set()
