@@ -34,7 +34,7 @@ class Detection:
         consumer.poll()
         # PyTorch
         # model = torch.hub.load("ultralytics/yolov5", 'custom', path='results/train/exp2/weights/bes.pt', trust_repo=True)
-        model = torch.hub.load("../yolov5", 'custom', source='local', path='results/train/exp2/weights/best.pt')
+        model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
         consumer.topics()
         while True:
 
@@ -54,18 +54,21 @@ class Detection:
                         frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
 
                         # Convert image
-                        if True:
+                        if np.shape(frame_temp)[0] == 540 * 960 * 3:
                             frame = frame_temp.reshape((540, 960, 3))
 
                             # Detection
                             results = model(frame)
                             names = results.names
                             preds = results.xyxy[0].numpy()
+                            sorted_dets = [[] for i in range(len(names))]
+                            for i in preds:
+                                sorted_dets[int(i[5])].append(i.tolist())
 
                             detection_message = {
-                                "frame": msgJSON["frame_n"],
+                                "frame_n": msgJSON["frame_n"],
                                 "classes": {
-                                    n: np.where(preds[5] == n, preds).tolist() for n in names.keys
+                                    i: n for i, n in enumerate(sorted_dets) if len(n) > 0
                                 }
                             }
 
