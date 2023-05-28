@@ -1,5 +1,3 @@
-import encoding
-
 import numpy as np
 import cv2
 import threading
@@ -7,27 +5,19 @@ import redis
 import signal
 import time
 import kafka
-import encoding.JSON as je
+import json
 
 
-def thread_produce():
-    # Redis
-    red = redis.Redis()
+class VideoProvider:
+    def __init__(self, video_input):
+        self.video_input = video_input
+        self.vc = cv2.VideoCapture(video_input)
+        self.fps = self.vc.get(cv2.CAP_PROP_FPS)
+        self.width = int(self.vc.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.vc.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # Video
-    vidInput = "data/video_854x480.mp4"
-    vc = cv2.VideoCapture(vidInput)
-    fps = 30
-
-    # Kafka
-    topic = 'frame_notification'
-    producer = kafka.KafkaProducer(bootstrap_servers='localhost:9092')
-
-    while True:
-        t_start = time.perf_counter()
-        ret, frame = vc.read()
-
-        # Jump back to the beginning of input
+    def read_frame(self):
+        ret, frame = self.vc.read()
         if not ret:
             vc.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
