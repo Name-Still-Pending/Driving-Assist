@@ -7,13 +7,10 @@ import time
 import kafka
 import json
 import encoding.JSON as je
+from frame_modifier import FrameModifier
 
 
 class VideoProvider:
-    NOISE_NONE = 0
-    NOISE_GAUSSIAN = 1
-    NOISE_SALT_AND_PEPPER = 2
-
     def __init__(self, video_input):
         self.lock = threading.Lock()
         self.video_input = video_input
@@ -22,7 +19,7 @@ class VideoProvider:
         self.fps = self.default_fps
         self.default_frame_duration = 1 / self.default_fps
         self.frame_duration = self.default_frame_duration
-        self.noise_mode = VideoProvider.NOISE_NONE
+        self.noise_mode = FrameModifier.NOISE_NONE
         self.noise_factor = .2
         self.scaling = False
         self.scaling_resolution = (-1, -1)
@@ -30,38 +27,6 @@ class VideoProvider:
 
         self.producer_thread = threading.Thread(target=self.produce_frames)
         self.stop_event = threading.Event()
-
-    def read_frame(self) -> [int, np.ndarray]:
-        ret, frame = self.vc.read()
-        if not ret:
-            self.vc.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            ret, frame = self.vc.read()
-        return self.vc.get(cv2.CAP_PROP_POS_FRAMES), frame
-
-    def scale_frame(self, frame: np.ndarray):
-        modified_frame = cv2.resize(frame, self.scaling_resolution, interpolation=cv2.INTER_LINEAR)
-        return modified_frame
-
-    def add_noise(self, frame: np.ndarray):
-        h, w, _ = frame.shape
-        match self.noise_mode:
-            case VideoProvider.NOISE_GAUSSIAN:
-                noise = np.random.normal(0, self.noise_factor * 255, (h, w, 3)).astype(np.uint8)
-                noisy_frame = cv2.add(frame.astype(np.int16), noise.astype(np.int16)).clip(0, 255).astype(np.uint8)
-
-            case VideoProvider.NOISE_SALT_AND_PEPPER:
-                salt = np.random.choice([0, 1], (h, w, 3), p=[0.9, 0.1])
-                pepper = np.random.choice([0, 1], (h, w, 3), p=[0.9, 0.1])
-                noise = salt * 255 + pepper * 0
-                noisy_frame = cv2.add(frame.astype(np.int16), noise.astype(np.int16)).clip(0, 255).astype(np.uint8)
-
-            case _:
-                return frame
-        return noisy_frame
-
-    def rotate_frame(self, frame: np.ndarray):
-        rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-        return rotated_frame
 
     def produce_frames(self):
         red = redis.Redis()
@@ -85,15 +50,15 @@ class VideoProvider:
             with self.lock:
                 # image scaling
                 if self.scaling:
-                    frame = self.scale_frame(frame)
+                    frame = FrameModifier.scale_frame(frame, self.scaling_resolution)
 
                 # noise
-                if self.noise_mode != VideoProvider.NOISE_NONE:
-                    frame = self.add_noise(frame)
+                if self.noise_mode != FrameModifier.NOISE_NONE:
+                    frame = FrameModifier.add_noise(frame, self.noise_mode, self.noise_factor)
 
                 # rotation
                 if self.rotation:
-                    frame = self.rotate_frame(frame)
+                    frame = FrameModifier.rotate_frame(frame)
 
             message = {
                 "id": "new_frame",
@@ -176,16 +141,15 @@ def noise_setting():
     print("  1: Gaussian")
     print("  2: Salt and pepper")
 
-    o = VideoProvider.NOISE_NONE
     f = .0
     while True:
         s = input("Selection: ")
         match s:
             case '0':
-                o = VideoProvider.NOISE_NONE
+                o = FrameModifier.NOISE_NONE
                 break
             case '1' | '2':
-                o = VideoProvider.NOISE_GAUSSIAN if s == '1' else VideoProvider.NOISE_SALT_AND_PEPPER
+                o = FrameModifier.NOISE_GAUSSIAN if s == '1' else FrameModifier.NOISE_SALT_AND_PEPPER
                 f = float(input('Noise factor: '))
                 break
             case _:
@@ -222,7 +186,7 @@ def main():
 
             case '5':
                 v_provider.set_rotation(False)
-                v_provider.set_noise(VideoProvider.NOISE_NONE, 0)
+                v_provider.set_noise(FrameModifier.NOISE_NONE, 0)
                 v_provider.set_fps(v_provider.default_fps)
                 v_provider.set_resolution([-1, -1], True)
 
