@@ -192,18 +192,73 @@ class FrameProducer:
 
 
 def sigint_handler(signum, frame):
-    event.set()
-    thread.join()
+    frame_producer.stop_display_thread()
     exit(0)
 
 
-signal.signal(signal.SIGINT, sigint_handler)
+def display_menu():
+    print("Menu:")
+    print("0: Play Original Video")
+    print("1: Add Noise")
+    print("2: Change Spatial Resolution")
+    print("3: Modify Sampling Frequency")
+    print("4: Rotate Video")
+    print("q: Quit")
 
-event = threading.Event()
-thread = threading.Thread(target=lambda: thread_produce())
+
+def get_noise_type():
+    while True:
+        noise_type = input("Select noise type (1 for Gaussian, 2 for Salt and Pepper): ")
+        if noise_type == '1':
+            return 'gaussian'
+        elif noise_type == '2':
+            return 'salt_and_pepper'
+        else:
+            print("Invalid input. Please try again.")
+
+
+video_processor = VideoProvider("data/video_dark.mp4")
+frame_modifier = VideoModifier()
+frame_producer = FrameProducer(video_processor, frame_modifier)
+
+
+def main():
+
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    thread = threading.Thread(target=frame_producer.process_frames)
+    thread.start()
+    frame_producer.start_display_thread()
+
+    while True:
+        display_menu()
+        option = input("Select an option: ")
+
+        if option == '0':
+            frame_producer.current_modification = None
+            frame = frame_producer.video_processor.read_frame()[1]
+            if frame is not None and frame.size > 0:
+                cv2.imshow('Video Player', frame)
+        elif option == '1':
+            frame_producer.current_modification = frame_producer.modifications[ord('1')]
+            frame_producer.current_modification['args']['noise_type'] = get_noise_type()
+        elif option == '2':
+            new_width = int(input("Enter new width: "))
+            new_height = int(input("Enter new height: "))
+            frame_producer.current_modification = frame_producer.modifications[ord('2')]
+            frame_producer.current_modification['args']['target_resolution'] = (new_width, new_height)
+        elif option == '3':
+            target_fps = int(input("Enter target FPS: "))
+            frame_producer.current_modification = frame_producer.modifications[ord('3')]
+            frame_producer.current_modification['args']['target_fps'] = target_fps
+        elif option == '4':
+            frame_producer.current_modification = frame_producer.modifications[ord('4')]
+        elif option == 'q':
+            break
+
+    frame_producer.stop_display_thread()
+    thread.join()
+
 
 if __name__ == "__main__":
-    thread.start()
-    input("Press CTRL+C or Enter to stop producing...")
-    event.set()
-    thread.join()
+    main()
