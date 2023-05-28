@@ -131,6 +131,8 @@ class VideoProvider:
     def set_fps(self, fps: float):
         with self.lock:
             if abs(fps - self.default_fps) < 0.0001:
+                self.fps = self.default_fps
+                self.frame_duration = self.default_frame_duration
                 return
 
             self.fps = fps
