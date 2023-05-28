@@ -3,3 +3,5 @@
 /video/
 docker-compose.yaml
 /object_recognition/yolov5n.pt
+/object_recognition/yolov5s.pt
+/video_provider/data/

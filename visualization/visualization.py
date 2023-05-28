@@ -74,8 +74,11 @@ def thread_frames():
                     frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
 
                     # Convert image
-                    if np.shape(frame_temp)[0] == 1229760:
-                        frame = frame_temp.reshape((480, 854, 3))
+                    y, x = msg_dict['res']
+                    if np.shape(frame_temp)[0] != x * y * 3:
+                        continue
+
+                    frame = frame_temp.reshape((y, x, 3))
 
                     # Plot detection
                     if (curr_time - preds_time).total_seconds() < 5:
