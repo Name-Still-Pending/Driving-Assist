@@ -63,7 +63,6 @@ class VideoModifier:
 
         modified_video = []
         for frame in video:
-            cv2.imshow('Video Player', frame)  # Display the frame
             cv2.waitKey(target_delay)  # Delay between frames to achieve the desired FPS
             modified_video.append(frame)
 
@@ -101,13 +100,6 @@ class FrameProducer:
         self.display_frame = None
         self.quit_display = False
 
-    def display_frames(self):
-        while not self.quit_display:
-            if self.display_frame is not None:
-                cv2.imshow('Modified Video - ' + self.current_modification['name'], self.display_frame)
-            if cv2.waitKey(1) == ord('q'):
-                break
-
     def process_frames(self):
         while True:
             ret, frame = self.video_processor.read_frame()
@@ -120,8 +112,6 @@ class FrameProducer:
                 "height": self.video_processor.height
             }
 
-            self.red.set("frame:latest", np.array(frame).tobytes())
-
             # Write new dimensions and FPS to Kafka message
             if self.current_modification:
                 if 'target_resolution' in self.current_modification['args']:
@@ -129,23 +119,12 @@ class FrameProducer:
                 if 'target_fps' in self.current_modification['args']:
                     message['fps'] = self.current_modification['args']['target_fps']
 
-            future = self.producer.send(self.topic, json.dumps(message).encode('utf-8'),
-                                        timestamp_ms=round(time.time() * 1000))
-
-            try:
-                rm = future.get(timeout=10)
-            except kafka.KafkaError:
-                pass
-
-            if frame.size > 0:
-                cv2.imshow('Video Player', frame)
-
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('0'):
-                cv2.imshow('Modified Video - Original', frame)
                 self.modified_video = []
                 self.current_modification = None
+                self.display_frame = frame
             elif key in self.modifications:
                 self.current_modification = self.modifications[key]
                 if self.current_modification['name'] == 'Change Resolution':
@@ -158,6 +137,9 @@ class FrameProducer:
                 self.display_frame = None
             elif key == ord('4') and self.current_modification and self.current_modification['name'] == 'Rotate Video':
                 self.modified_video = self.frame_modifier.rotate_video(self.modified_video)
+                message['width'] = self.modified_video.shape
+                message['height'] = self.video_processor.width
+
                 if len(self.modified_video) > 0:
                     self.display_frame = self.modified_video[0]
 
@@ -170,6 +152,18 @@ class FrameProducer:
             if key == ord('q'):
                 break
 
+            # send frame over redis
+            self.red.set("frame:latest", np.array(self.display_frame).tobytes())
+
+            # send frame info over kafka
+            future = self.producer.send(self.topic, json.dumps(message).encode('utf-8'),
+                                        timestamp_ms=round(time.time() * 1000))
+
+            try:
+                rm = future.get(timeout=10)
+            except kafka.KafkaError:
+                pass
+
             t_start = time.perf_counter()
             t_stop = time.perf_counter()
             t_elapsed = t_stop - t_start
@@ -181,18 +175,9 @@ class FrameProducer:
         self.video_processor.vc.release()
         cv2.destroyAllWindows()
 
-    def start_display_thread(self):
-        self.display_thread = threading.Thread(target=self.display_frames)
-        self.display_thread.start()
-
-    def stop_display_thread(self):
-        self.quit_display = True
-        if self.display_thread:
-            self.display_thread.join()
-
 
 def sigint_handler(signum, frame):
-    frame_producer.stop_display_thread()
+    # f_producer.stop_display_thread()
     exit(0)
 
 
@@ -217,46 +202,43 @@ def get_noise_type():
             print("Invalid input. Please try again.")
 
 
-video_processor = VideoProvider("data/video_dark.mp4")
-frame_modifier = VideoModifier()
-frame_producer = FrameProducer(video_processor, frame_modifier)
+v_provider = VideoProvider("data/sample_0.avi")
+f_modifier = VideoModifier()
+f_producer = FrameProducer(v_provider, f_modifier)
 
 
 def main():
 
     signal.signal(signal.SIGINT, sigint_handler)
 
-    thread = threading.Thread(target=frame_producer.process_frames)
+    thread = threading.Thread(target=f_producer.process_frames)
     thread.start()
-    frame_producer.start_display_thread()
+    # f_producer.start_display_thread()
 
     while True:
         display_menu()
         option = input("Select an option: ")
 
         if option == '0':
-            frame_producer.current_modification = None
-            frame = frame_producer.video_processor.read_frame()[1]
-            if frame is not None and frame.size > 0:
-                cv2.imshow('Video Player', frame)
+            f_producer.current_modification = None
         elif option == '1':
-            frame_producer.current_modification = frame_producer.modifications[ord('1')]
-            frame_producer.current_modification['args']['noise_type'] = get_noise_type()
+            f_producer.current_modification = f_producer.modifications[ord('1')]
+            f_producer.current_modification['args']['noise_type'] = get_noise_type()
         elif option == '2':
             new_width = int(input("Enter new width: "))
             new_height = int(input("Enter new height: "))
-            frame_producer.current_modification = frame_producer.modifications[ord('2')]
-            frame_producer.current_modification['args']['target_resolution'] = (new_width, new_height)
+            f_producer.current_modification = f_producer.modifications[ord('2')]
+            f_producer.current_modification['args']['target_resolution'] = (new_width, new_height)
         elif option == '3':
             target_fps = int(input("Enter target FPS: "))
-            frame_producer.current_modification = frame_producer.modifications[ord('3')]
-            frame_producer.current_modification['args']['target_fps'] = target_fps
+            f_producer.current_modification = f_producer.modifications[ord('3')]
+            f_producer.current_modification['args']['target_fps'] = target_fps
         elif option == '4':
-            frame_producer.current_modification = frame_producer.modifications[ord('4')]
+            f_producer.current_modification = f_producer.modifications[ord('4')]
         elif option == 'q':
             break
 
-    frame_producer.stop_display_thread()
+    # f_producer.stop_display_thread()
     thread.join()
 
 
