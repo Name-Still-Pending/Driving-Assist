@@ -6,17 +6,32 @@ import signal
 import time
 import kafka
 import json
+import encoding.JSON as je
 
 
 class VideoProvider:
+    NOISE_NONE = 0
+    NOISE_GAUSSIAN = 1
+    NOISE_SALT_AND_PEPPER = 2
+
     def __init__(self, video_input):
+        self.lock = threading.Lock()
         self.video_input = video_input
         self.vc = cv2.VideoCapture(video_input)
-        self.fps = self.vc.get(cv2.CAP_PROP_FPS)
-        self.width = int(self.vc.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.vc.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.default_fps = self.vc.get(cv2.CAP_PROP_FPS)
+        self.fps = self.default_fps
+        self.default_frame_duration = 1 / self.default_fps
+        self.frame_duration = self.default_frame_duration
+        self.noise_mode = VideoProvider.NOISE_NONE
+        self.noise_factor = .2
+        self.scaling = False
+        self.scaling_resolution = (-1, -1)
+        self.rotation = False
 
-    def read_frame(self):
+        self.producer_thread = threading.Thread(target=self.produce_frames)
+        self.stop_event = threading.Event()
+
+    def read_frame(self) -> [int, np.ndarray]:
         ret, frame = self.vc.read()
         if not ret:
             self.vc.set(cv2.CAP_PROP_POS_FRAMES, 0)
