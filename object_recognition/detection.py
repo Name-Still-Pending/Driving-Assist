@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 
 import threading
 import redis
@@ -9,13 +8,14 @@ from datetime import datetime
 import time
 import torch
 import encoding.JSON as je
-from prometheus_client import start_http_server, Counter
-
+from prometheus_client import start_http_server, Counter, Gauge
 
 
 class Detection:
     def __init__(self):
-        self.counter_neuralnetwork = Counter('nn_detections', 'Number of NN detections')
+        self.counter_frames = Counter('nn_frames', 'Number of frames processed by YOLO.')
+        self.counter_vehicles = Counter("nn_vehicles", 'Number of detected vehicles.')
+        self.gauge_detection_time = Gauge('nn_detection_time', 'Time taken to detect objects in frame.')
         self.event = threading.Event()
         self.thread = threading.Thread(target=lambda: self.thread_do_work())
 
@@ -33,56 +33,68 @@ class Detection:
                                        group_id='grp_detection', consumer_timeout_ms=2000)
         consumer.poll()
         # PyTorch
-        # model = torch.hub.load("ultralytics/yolov5", 'custom', path='results/train/exp2/weights/bes.pt', trust_repo=True)
         model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
         consumer.topics()
+
         while True:
 
             # Read from Redis when message is received over Kafka
             consumer.seek_to_end()
             for raw_message in consumer:
-                msgJSON = je.decode_bin(raw_message.value)
-                message = msgJSON["id"]
+                msg_dict = je.decode_bin(raw_message.value)
 
-                if message == "new_frame":
-                    frame_time = datetime.fromtimestamp(raw_message.timestamp / 1000)
-                    curr_time = datetime.now()
-                    diff = (curr_time - frame_time).total_seconds()
+                if msg_dict['id'] != "new_frame":
+                    continue
 
-                    # Exclude old frames
-                    if diff < 2:
-                        frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
+                frame_time = datetime.fromtimestamp(raw_message.timestamp / 1000)
+                curr_time = datetime.now()
+                diff = (curr_time - frame_time).total_seconds()
 
-                        # Convert image
-                        if np.shape(frame_temp)[0] == 540 * 960 * 3:
-                            frame = frame_temp.reshape((540, 960, 3))
+                if diff >= 2:
+                    continue
+                # Exclude old frames
+                frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
 
-                            # Detection
-                            results = model(frame)
-                            names = results.names
-                            preds = results.xyxy[0].numpy()
-                            sorted_dets = [[] for _ in range(len(names))]
-                            for i in preds:
-                                sorted_dets[int(i[5])].append(i[0: 5].tolist())
+                h, w = msg_dict['res']
+                if np.shape(frame_temp)[0] != h * w * 3:
+                    continue
+                # Convert image
+                frame = frame_temp.reshape((h, w, 3))
 
-                            detection_message = {
-                                "frame_n": msgJSON["frame_n"],
-                                "classes": {
-                                    names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0
-                                }
-                            }
+                # Detection
+                det_s = time.perf_counter()
+                results = model(frame)
+                self.gauge_detection_time.set(time.perf_counter() - det_s)
 
-                            # Send detection data over Kafka
-                            future = producer.send(prod_topic, je.encode_bin(detection_message),
-                                                   timestamp_ms=round(time.time() * 1000))
+                names = results.names
+                preds = results.xyxy[0].numpy()
+                sorted_dets = [[] for _ in range(len(names))]
+                for i in preds:
+                    sorted_dets[int(i[5])].append(i[0: 5].tolist())
+                classes = {names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0}
+                detection_message = {
+                    "frame_n": msg_dict["frame_n"],
+                    "classes": classes
+                }
 
-                            # Wait until message is delivered to Kafka
-                            try:
-                                rm = future.get(timeout=10)
-                            except kafka.KafkaError:
-                                pass
+                # Send detection data over Kafka
+                future = producer.send(prod_topic, je.encode_bin(detection_message),
+                                       timestamp_ms=round(time.time() * 1000))
 
-                        self.counter_neuralnetwork.inc(1)
+                # Wait until message is delivered to Kafka
+                try:
+                    _ = future.get(timeout=10)
+                except kafka.KafkaError:
+                    pass
+
+                self.counter_frames.inc(1)
+
+                vc = len(classes.get('vehicle_ign', []))
+                vc += len(classes.get('vehicle_s', []))
+                vc += len(classes.get('vehicle_r', []))
+                vc += len(classes.get('vehicle_l', []))
+
+                self.counter_vehicles.inc(vc)
 
                 if self.event.is_set():
                     break

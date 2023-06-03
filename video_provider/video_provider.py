@@ -34,6 +34,7 @@ class VideoProvider:
         producer = kafka.KafkaProducer(bootstrap_servers='localhost:9092')
         last_frame_start = time.perf_counter()
         vid_time = self.vc.get(cv2.CAP_PROP_POS_MSEC)
+        frame_cnt = 0
 
         while True:
             f_start = time.perf_counter()
@@ -60,9 +61,11 @@ class VideoProvider:
                 if self.rotation:
                     frame = FrameModifier.rotate_frame(frame)
 
+            frame_cnt += 1
             message = {
                 "id": "new_frame",
                 "frame_n": int(self.vc.get(cv2.CAP_PROP_POS_FRAMES)),
+                "frame_cnt": frame_cnt,
                 "fps": self.fps,
                 "res": frame.shape[0: 2]
             }
