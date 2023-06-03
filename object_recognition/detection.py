@@ -61,14 +61,14 @@ class Detection:
                             results = model(frame)
                             names = results.names
                             preds = results.xyxy[0].numpy()
-                            sorted_dets = [[] for i in range(len(names))]
+                            sorted_dets = [[] for _ in range(len(names))]
                             for i in preds:
-                                sorted_dets[int(i[5])].append(i.tolist())
+                                sorted_dets[int(i[5])].append(i[0: 5].tolist())
 
                             detection_message = {
                                 "frame_n": msgJSON["frame_n"],
                                 "classes": {
-                                    i: n for i, n in enumerate(sorted_dets) if len(n) > 0
+                                    names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0
                                 }
                             }
 
