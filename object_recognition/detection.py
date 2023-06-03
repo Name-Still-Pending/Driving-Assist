@@ -41,46 +41,48 @@ class Detection:
             # Read from Redis when message is received over Kafka
             consumer.seek_to_end()
             for raw_message in consumer:
-                msgJSON = je.decode_bin(raw_message.value)
-                message = msgJSON["id"]
+                msg_dict = je.decode_bin(raw_message.value)
 
-                if message == "new_frame":
-                    frame_time = datetime.fromtimestamp(raw_message.timestamp / 1000)
-                    curr_time = datetime.now()
-                    diff = (curr_time - frame_time).total_seconds()
+                if msg_dict['id'] != "new_frame":
+                    continue
 
-                    # Exclude old frames
-                    if diff < 2:
-                        frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
+                frame_time = datetime.fromtimestamp(raw_message.timestamp / 1000)
+                curr_time = datetime.now()
+                diff = (curr_time - frame_time).total_seconds()
 
-                        # Convert image
-                        if np.shape(frame_temp)[0] == 540 * 960 * 3:
-                            frame = frame_temp.reshape((540, 960, 3))
+                if diff >= 2:
+                    continue
+                # Exclude old frames
+                frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
 
-                            # Detection
-                            results = model(frame)
-                            names = results.names
-                            preds = results.xyxy[0].numpy()
-                            sorted_dets = [[] for _ in range(len(names))]
-                            for i in preds:
-                                sorted_dets[int(i[5])].append(i[0: 5].tolist())
+                h, w = msg_dict['res']
+                if np.shape(frame_temp)[0] != h * w * 3:
+                    continue
+                # Convert image
+                frame = frame_temp.reshape((h, w, 3))
 
-                            detection_message = {
-                                "frame_n": msgJSON["frame_n"],
-                                "classes": {
-                                    names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0
-                                }
-                            }
+                # Detection
+                results = model(frame)
+                names = results.names
+                preds = results.xyxy[0].numpy()
+                sorted_dets = [[] for _ in range(len(names))]
+                for i in preds:
+                    sorted_dets[int(i[5])].append(i[0: 5].tolist())
+                classes = {names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0}
+                detection_message = {
+                    "frame_n": msg_dict["frame_n"],
+                    "classes": classes
+                }
 
-                            # Send detection data over Kafka
-                            future = producer.send(prod_topic, je.encode_bin(detection_message),
-                                                   timestamp_ms=round(time.time() * 1000))
+                # Send detection data over Kafka
+                future = producer.send(prod_topic, je.encode_bin(detection_message),
+                                       timestamp_ms=round(time.time() * 1000))
 
-                            # Wait until message is delivered to Kafka
-                            try:
-                                rm = future.get(timeout=10)
-                            except kafka.KafkaError:
-                                pass
+                # Wait until message is delivered to Kafka
+                try:
+                    _ = future.get(timeout=10)
+                except kafka.KafkaError:
+                    pass
 
                         self.counter_neuralnetwork.inc(1)
 
