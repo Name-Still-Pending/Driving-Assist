@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 
 import threading
 import redis
@@ -9,13 +8,14 @@ from datetime import datetime
 import time
 import torch
 import encoding.JSON as je
-from prometheus_client import start_http_server, Counter
-
+from prometheus_client import start_http_server, Counter, Gauge
 
 
 class Detection:
     def __init__(self):
-        self.counter_neuralnetwork = Counter('nn_detections', 'Number of NN detections')
+        self.counter_frames = Counter('nn_frames', 'Number of frames processed by YOLO.')
+        self.counter_vehicles = Counter("nn_vehicles", 'Number of detected vehicles.')
+        self.gauge_detection_time = Gauge('nn_detection_time', 'Time taken to detect objects in frame.')
         self.event = threading.Event()
         self.thread = threading.Thread(target=lambda: self.thread_do_work())
 
@@ -33,9 +33,9 @@ class Detection:
                                        group_id='grp_detection', consumer_timeout_ms=2000)
         consumer.poll()
         # PyTorch
-        # model = torch.hub.load("ultralytics/yolov5", 'custom', path='results/train/exp2/weights/bes.pt', trust_repo=True)
         model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
         consumer.topics()
+
         while True:
 
             # Read from Redis when message is received over Kafka
@@ -62,7 +62,10 @@ class Detection:
                 frame = frame_temp.reshape((h, w, 3))
 
                 # Detection
+                det_s = time.perf_counter()
                 results = model(frame)
+                self.gauge_detection_time.set(time.perf_counter() - det_s)
+
                 names = results.names
                 preds = results.xyxy[0].numpy()
                 sorted_dets = [[] for _ in range(len(names))]
@@ -84,7 +87,14 @@ class Detection:
                 except kafka.KafkaError:
                     pass
 
-                        self.counter_neuralnetwork.inc(1)
+                self.counter_frames.inc(1)
+
+                vc = len(classes.get('vehicle_ign', []))
+                vc += len(classes.get('vehicle_s', []))
+                vc += len(classes.get('vehicle_r', []))
+                vc += len(classes.get('vehicle_l', []))
+
+                self.counter_vehicles.inc(vc)
 
                 if self.event.is_set():
                     break
