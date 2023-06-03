@@ -4,127 +4,202 @@ import threading
 import redis
 import kafka
 import signal
-from datetime import datetime
 import encoding.JSON as je
+from enum import IntEnum
 
 
-# Global detection list
-# TODO: Using globals is not the best solution, modify this
-preds_list = []
-preds_time = datetime.now()
-lock = threading.Lock()
-
-def thread_detection():
-    global preds_list, preds_time
-
-    # Kafka
-    topic = 'frame_detection'
-    consumer = kafka.KafkaConsumer(bootstrap_servers='localhost:9092', auto_offset_reset='earliest', consumer_timeout_ms=2000)
-    consumer.subscribe([topic])
-
-    while True:
-    
-        # Read detection data from Kafka
-        for message in consumer:
-
-            # Decode string
-            preds_str = message.value.decode("utf-8")
-
-            with lock:
-                preds_list = preds_str.split("|") if len(preds_str) > 0 else []
-                preds_time = datetime.fromtimestamp(message.timestamp / 1000)
-
-            if event.is_set():
-                break   
-
-        # Stop loop
-        if event.is_set():
-            cv2.destroyAllWindows()
-            break    
+class TurnWarning(IntEnum):
+    NONE = 0
+    LEFT = 1
+    RIGHT = 2
+    STRAIGHT = 4
+    LEFT_STRAIGHT = LEFT | STRAIGHT
+    RIGHT_STRAIGHT = RIGHT | STRAIGHT
+    ALL = LEFT | STRAIGHT | RIGHT
 
 
-def thread_frames():
-    global preds_list, preds_time
+VEHICLE_IGN = 'vehicle_ign'
+VEHICLE_L = 'vehicle_l'
+VEHICLE_R = 'vehicle_r'
+VEHICLE_S = 'vehicle_s'
 
-    # Redis
-    red = redis.Redis()
 
-    # Video
-    frame = 0
+class Visualization:
+    __turn_masks = {
+        'default': {VEHICLE_L: TurnWarning.NONE,
+                    VEHICLE_R: TurnWarning.LEFT_STRAIGHT,
+                    VEHICLE_S: TurnWarning.LEFT},
+        'priority': {VEHICLE_L: TurnWarning.NONE,
+                     VEHICLE_R: TurnWarning.NONE,
+                     VEHICLE_S: TurnWarning.LEFT},
+        'priority_to_left': {VEHICLE_L: TurnWarning.NONE,
+                             VEHICLE_R: TurnWarning.NONE,
+                             VEHICLE_S: TurnWarning.LEFT},
+        'priority_to_right': {VEHICLE_L: TurnWarning.NONE,
+                              VEHICLE_R: TurnWarning.LEFT_STRAIGHT,
+                              VEHICLE_S: TurnWarning.NONE},
+        'yield': {VEHICLE_L: TurnWarning.ALL,
+                  VEHICLE_R: TurnWarning.LEFT_STRAIGHT,
+                  VEHICLE_S: TurnWarning.LEFT},
+        'yield_left_straight': {VEHICLE_L: TurnWarning.ALL,
+                                VEHICLE_R: TurnWarning.LEFT_STRAIGHT,
+                                VEHICLE_S: TurnWarning.ALL},
+        'yield_right_straight': {VEHICLE_L: TurnWarning.NONE,
+                                 VEHICLE_R: TurnWarning.ALL,
+                                 VEHICLE_S: TurnWarning.ALL}
 
-    # Kafka
-    topic = 'frame_notification'
-    consumer = kafka.KafkaConsumer(topic, bootstrap_servers='localhost:9092', auto_offset_reset='earliest', group_id='grp_visualization', consumer_timeout_ms=2000)
-    consumer.poll()
+    }
+    def __init__(self):
+        self.__preds_dict = {"frame_n": -1024, 'classes': []}
+        self.lock = threading.Lock()
+        self.event = threading.Event()
+        self.thread_frm = threading.Thread(target=lambda: self.__thread_frames())
+        self.thread_det = threading.Thread(target=lambda: self.__thread_detection())
+        self.names = ['vehicle_ign', 'vehicle_l', 'vehicle_r', 'vehicle_s']
+        self.colors = {
+            n: np.random.randint(0, 256, 3).tolist() for n in self.names
+        }
+        signal.signal(signal.SIGINT, self.__sigint_handler)
 
-    while True:
-        # Read from Redis when message is received over Kafka
-        consumer.seek_to_end()
-        for raw_message in consumer:
-            msg_dict = je.decode_bin(raw_message.value)
-            message = msg_dict["id"]
+        self.priority_mode = 'default'
 
-            if message == "new_frame":
-                frame_time = datetime.fromtimestamp(raw_message.timestamp / 1000)
-                curr_time = datetime.now()
-                diff = (curr_time - frame_time).total_seconds()
+    def __thread_detection(self):
 
-                # Exclude old frames
-                if diff < 2:
-                    frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
+        # Kafka
+        topic = 'frame_detection'
+        consumer = kafka.KafkaConsumer(topic, bootstrap_servers='localhost:9092', auto_offset_reset='earliest', consumer_timeout_ms=2000)
+        consumer.poll(1000)
 
-                    # Convert image
-                    y, x = msg_dict['res']
-                    if np.shape(frame_temp)[0] != x * y * 3:
-                        continue
+        while True:
 
-                    frame = frame_temp.reshape((y, x, 3))
+            consumer.seek_to_end()
+            # Read detection data from Kafka
+            for message in consumer:
 
-                    # Plot detection
-                    if (curr_time - preds_time).total_seconds() < 5:
-                        with lock:
-                            for pred_str in preds_list:
-                                # column_start,row_start,column_end,row_end
-                                pred = [int(float(v)) for v in pred_str.split(",")]
-                                # Top
-                                cv2.line(frame, (pred[0], pred[1]), (pred[2], pred[1]), (0, 0, 255), 5)
-                                # Bottom
-                                cv2.line(frame, (pred[0], pred[3]), (pred[2], pred[3]), (0, 0, 255), 5)
-                                # Left
-                                cv2.line(frame, (pred[0], pred[1]), (pred[0], pred[3]), (0, 0, 255), 5)
-                                # Right
-                                cv2.line(frame, (pred[2], pred[1]), (pred[2], pred[3]), (0, 0, 255), 5)
+                with self.lock:
+                    self.__preds_dict = je.decode_bin(message.value)
 
-                    # Display image
-                    cv2.imshow("frame", frame)
-                    cv2.waitKey(1)
+                if self.event.is_set():
+                    break
 
-            if event.is_set():
+            # Stop loop
+            if self.event.is_set():
+                cv2.destroyAllWindows()
                 break
 
-        # Stop loop
-        if event.is_set():
-            cv2.destroyAllWindows()
-            break    
+    def __thread_frames(self):
+        # Redis
+        red = redis.Redis()
 
+        # Kafka
+        topic = 'frame_notification'
+        consumer = kafka.KafkaConsumer(topic, bootstrap_servers='localhost:9092', auto_offset_reset='earliest', group_id='grp_visualization', consumer_timeout_ms=2000)
+        consumer.poll()
 
-def sigint_handler(signum, frame):
-    event.set()
-    thread_frm.join()
-    thread_det.join()
-    exit(0)
+        while True:
+            # Read from Redis when message is received over Kafka
+            consumer.seek_to_end()
+            for raw_message in consumer:
+                msg_dict = je.decode_bin(raw_message.value)
+                message = msg_dict["id"]
 
+                if message != "new_frame":
+                    continue
 
-signal.signal(signal.SIGINT, sigint_handler)
+                frame_temp = np.frombuffer(red.get("frame:latest"), dtype=np.uint8)
 
-event = threading.Event()
-thread_frm = threading.Thread(target=lambda: thread_frames())
-thread_det = threading.Thread(target=lambda: thread_detection())
+                h, w = msg_dict['res']
+                if np.shape(frame_temp)[0] != h * w * 3:
+                    continue
+                frame = frame_temp.reshape((h, w, 3))
+
+                with self.lock:
+                    f_diff = (msg_dict["frame_n"] - self.__preds_dict['frame_n'])
+                    dets = self.__preds_dict['classes']
+                    turn_rules = Visualization.__turn_masks[self.priority_mode]
+                    # print(f_diff)
+                if 0 <= f_diff < 100:
+                    for cls in dets:
+                        color = self.colors.get(cls, (0, 0, 0))
+                        restriction = turn_rules.get(cls)
+                        for d in dets[cls]:
+                            rect = np.int32(d)
+                            cv2.rectangle(frame, rect[0: 2], rect[2: 4], color, 3)
+                            cv2.putText(frame, cls, (rect[0], rect[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
+
+                            if restriction is None:
+                                continue
+
+                            center = ((rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2)
+
+                            if restriction & TurnWarning.LEFT > 0:  # L_TURN
+                                cv2.line(frame, center, (rect[0], center[1]), color, 3)
+                            if restriction & TurnWarning.RIGHT > 0:  # R_TURN
+                                cv2.line(frame, center, (rect[2], center[1]), color, 3)
+                            if restriction & TurnWarning.STRAIGHT > 0:  # STRAIGHT
+                                cv2.line(frame, center, (center[0], rect[1]), color, 3)
+
+                        # self.__detection_logic(frame, classes)
+                cv2.imshow('Frame', frame)
+                cv2.waitKey(1)
+
+                if self.event.is_set():
+                    break
+
+            # Stop loop
+            if self.event.is_set():
+                cv2.destroyAllWindows()
+                break
+
+    def __sigint_handler(self, signum, frame):
+        self.event.set()
+        self.thread_frm.join()
+        self.thread_det.join()
+        exit(0)
+
+    def set_priority_mode(self, mode: str):
+        assert mode in Visualization.__turn_masks
+        with self.lock:
+            self.priority_mode = mode
+
+    def start(self):
+        self.thread_frm.start()
+        self.thread_det.start()
+        while True:
+            print('Options:')
+            print('  1: Set priority mode')
+            print('  q: Quit')
+
+            s = input('Selection: ')
+            match s:
+                case '1':
+                    print("Select priority mode:")
+                    print('  1: Default')
+                    print('  2: Priority')
+                    print('  3: Priority to left')
+                    print('  4: Priority to right')
+                    print('  5: Yield')
+                    print('  6: Yield straight and left')
+                    print('  7: Yield straight and right')
+                    while True:
+                        m = int(input("Selection: ")) - 1
+                        if 0 > m >= len(Visualization.__turn_masks):
+                            print("invalid option, try again!")
+                            continue
+                        mode = list(Visualization.__turn_masks)[m]
+                        self.set_priority_mode(mode)
+                        break
+                    print("Mode set")
+
+                case 'q':
+                    print('Stopping ...')
+                    break
+
+        self.event.set()
+        self.thread_frm.join()
+        self.thread_det.join()
+
 
 if __name__ == "__main__":
-    thread_frm.start()
-    thread_det.start()
-    input("Press CTRL+C or Enter to stop visualization...")
-    event.set()
-    thread_frm.join()
-    thread_det.join()
+    vis = Visualization()
+    vis.start()
