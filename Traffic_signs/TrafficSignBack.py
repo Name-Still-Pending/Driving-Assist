@@ -23,10 +23,13 @@ async def play_sound():
             playsound.playsound(sound_file, False, callback=callback)
         await asyncio.sleep(0)  # Non-blocking delay
 
-# Load the pre-trained YOLO model and labels
-net = cv2.dnn.readNetFromDarknet('yolo.cfg', 'yolo.weights')
+# Load the pre-trained YOLOv5 model and labels
+net = cv2.dnn.readNet('weights.pt', 'yolov5x.cfg')
 labels = ['stop', 'yield', 'right_of_way', '30', '40', '50', '60', '70', '80', '100', 'residential_area', 'residential_area_end', 'speed_limit_end', 'end_of_30', 'warning', 'one_way_road', 'bus_stop', 'crosswalk', 'roundebound', 'direction', 'no_entry', 'prohibition', 'ignore', 'info_sign']
 # List of class labels
+
+width = 640
+height = 640
 
 # Set the paths to the WAV files for each class
 audio_files = {
@@ -57,11 +60,9 @@ audio_files = {
 # Function to perform object detection on an image/frame
 def perform_object_detection(image):
     # Perform object detection
-    blob = cv2.dnn.blobFromImage(image, 1/255.0, (416, 416), swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage(image, 1/255.0, (width, height), swapRB=True, crop=False)
     net.setInput(blob)
-    layer_names = net.getLayerNames()
-    output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-    outputs = net.forward(output_layers)
+    outputs = net.forward(net.getUnconnectedOutLayers())
 
     # Process the detections
     detections = []
@@ -86,7 +87,7 @@ async def process_frames():
     while True:
         currentStatus = [False] * 22
 
-        # Receive a frame from the video loader (replace 'get_frame()' with the appropriate function from your video loader)
+        # Receive a frame from the video loader
         frame = get_frame()  # TODO!!
 
         # Perform object detection on the frame
@@ -112,6 +113,14 @@ async def process_frames():
                 elif class_id == 2:
                     # send Priority TODO!!
                     pass
+            
+            box = detection[0:4] * np.array([width, height, width, height])
+            (centerX, centerY, boxWidth, boxHeight) = box.astype("int")
+
+            # Calculate the top-left corner of the bounding box
+            x = int(centerX - (boxWidth / 2))
+            y = int(centerY - (boxHeight / 2))
+
 
             # Print the class label and confidence
             label = labels[class_id]
