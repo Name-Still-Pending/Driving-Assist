@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import psutil
 import threading
 import redis
@@ -111,7 +110,7 @@ class Detection:
 
                 self.gauge_total_frame_time.set(time.perf_counter() - f_start)
                 self.gauge_memory_usage.set(process.memory_info().rss)
-                self.gauge_cpu_usage.set(process.cpu_percent(interval=None))
+                self.gauge_cpu_usage.set(process.cpu_percent(interval=None) / psutil.cpu_count())
 
                 consumer.seek_to_end()
             # Stop loop
