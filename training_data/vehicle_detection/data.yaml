@@ -1,5 +1,5 @@
-train: ../train/images
-val: ../valid/images
+train: ../training_data/vehicle_detection/train/images
+val: ../training_data/vehicle_detection/valid/images
 
 nc: 4
 names: [vehicle_ign, vehicle_l, vehicle_r, vehicle_s]
