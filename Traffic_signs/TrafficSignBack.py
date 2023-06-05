@@ -1,18 +1,32 @@
 import cv2
 import numpy as np
 import playsound
+import asyncio
 from queue import Queue
 
 # Create a queue for storing sound files to be played
 sound_queue = Queue()
 
 # Function to play sound files
-def play_sound(sound_file):
-    playsound.playsound(sound_file)
+async def play_sound():
+    is_playing = False  # Flag to track if a sound is currently being played
+
+    while True:
+        if not is_playing and not sound_queue.empty():
+            sound_file = sound_queue.get()  # Retrieve sound file from the queue
+            is_playing = True
+
+            def callback():
+                nonlocal is_playing
+                is_playing = False
+
+            playsound.playsound(sound_file, False, callback=callback)
+        await asyncio.sleep(0)  # Non-blocking delay
 
 # Load the pre-trained YOLO model and labels
 net = cv2.dnn.readNetFromDarknet('yolo.cfg', 'yolo.weights')
 labels = ['stop', 'yield', 'right_of_way', '30', '40', '50', '60', '70', '80', '100', 'residential_area', 'residential_area_end', 'speed_limit_end', 'end_of_30', 'warning', 'one_way_road', 'bus_stop', 'crosswalk', 'roundebound', 'direction', 'no_entry', 'prohibition', 'ignore', 'info_sign']
+# List of class labels
 
 # Set the paths to the WAV files for each class
 audio_files = {
@@ -40,6 +54,7 @@ audio_files = {
     21: 'Prohibition.wav',
 }
 
+# Function to perform object detection on an image/frame
 def perform_object_detection(image):
     # Perform object detection
     blob = cv2.dnn.blobFromImage(image, 1/255.0, (416, 416), swapRB=True, crop=False)
