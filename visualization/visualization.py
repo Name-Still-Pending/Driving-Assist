@@ -6,6 +6,7 @@ import kafka
 import signal
 import encoding.JSON as je
 from enum import IntEnum
+import TrafficSignBack
 
 
 class TurnWarning(IntEnum):
@@ -49,6 +50,7 @@ class Visualization:
                                  VEHICLE_S: TurnWarning.ALL}
 
     }
+
     def __init__(self):
         self.__preds_dict = {"frame_n": -1024, 'classes': []}
         self.lock = threading.Lock()
@@ -62,6 +64,7 @@ class Visualization:
         signal.signal(signal.SIGINT, self.__sigint_handler)
 
         self.priority_mode = 'default'
+        self.warning_player = TrafficSignBack.WarningPlayer()
 
     def __thread_detection(self):
 
@@ -122,10 +125,13 @@ class Visualization:
                     for cls in dets:
                         color = self.colors.get(cls, (0, 0, 0))
                         restriction = turn_rules.get(cls)
+                        self.warning_player.try_queue_warning(cls, raw_message.timestamp * 1000)
                         for d in dets[cls]:
                             rect = np.int32(d)
                             cv2.rectangle(frame, rect[0: 2], rect[2: 4], color, 3)
                             cv2.putText(frame, cls, (rect[0], rect[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
+
+                            # warning sounds
 
                             if restriction is None:
                                 continue
@@ -152,9 +158,7 @@ class Visualization:
                 break
 
     def __sigint_handler(self, signum, frame):
-        self.event.set()
-        self.thread_frm.join()
-        self.thread_det.join()
+        self.stop()
         exit(0)
 
     def set_priority_mode(self, mode: str):
@@ -165,6 +169,7 @@ class Visualization:
     def start(self):
         self.thread_frm.start()
         self.thread_det.start()
+        self.warning_player.start()
         while True:
             print('Options:')
             print('  1: Set priority mode')
@@ -195,10 +200,13 @@ class Visualization:
                     print('Stopping ...')
                     break
 
+        self.stop()
+
+    def stop(self):
         self.event.set()
+        self.warning_player.stop()
         self.thread_frm.join()
         self.thread_det.join()
-
 
 if __name__ == "__main__":
     vis = Visualization()

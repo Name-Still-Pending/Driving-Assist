@@ -42,7 +42,7 @@ class Detection:
                                        group_id='grp_detection', consumer_timeout_ms=2000)
         consumer.poll()
         # PyTorch
-        model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
+        model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/signs/weights.pt')
         consumer.topics()
 
         while True:
