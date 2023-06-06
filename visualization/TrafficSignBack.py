@@ -75,8 +75,7 @@ class WarningPlayer:
             playsound.playsound(os.path.join(self.audio_path, file), True)
 
     def try_queue_warning(self, warning: str, time_ms):
-        with self.queue_lock:
-            warn = WarningPlayer.audio.get(warning)
+        warn = WarningPlayer.audio.get(warning)
 
         if warn is None:
             return
@@ -106,7 +105,8 @@ def test(fps):
     for _ in range(100):
         t_start = time.perf_counter()
 
-        samples = random.sample(labels, random.randint(0, 5))
+        samples = random.sample(labels, random.randint(0, 1))
+        # samples = [labels[0]]
         t = time.time() * 1000
         for s in samples:
             player.try_queue_warning(s, t)
