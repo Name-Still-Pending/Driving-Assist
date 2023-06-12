@@ -16,6 +16,7 @@ process = psutil.Process()
 
 class Detection:
     def __init__(self):
+        # metrics gathering
         self.counter_frames = Counter('nn_frames', 'Number of frames processed by YOLO.')
         self.counter_vehicles_left = Counter("nn_vehicles_left", "Number of vehicles positioned left.")
         self.counter_vehicles_right = Counter("nn_vehicles_right", "Number of vehicles positioned right.")
@@ -27,6 +28,23 @@ class Detection:
         self.gauge_cpu_usage = Gauge('nn_cpu_usage', 'CPU usage of object detection.')
         self.event = threading.Event()
         self.thread = threading.Thread(target=lambda: self.thread_do_work())
+
+        self.vehicles_model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
+        self.signs_model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/signs/weights.pt')
+
+    @staticmethod
+    def yolo_detect(model, frame, output, lock) -> None:
+        # print(f'detection start')
+        results = model(frame)
+        # print('detection end')
+        names = results.names
+        preds = results.xyxy[0].numpy()
+        sorted_dets = [list() for _ in range(len(names))]
+        for i in preds:
+            sorted_dets[int(i[5])].append(i[0: 5].tolist())
+        classes = {names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0}
+        with lock:
+            output.update(classes)
 
     def thread_do_work(self):
         # Redis
@@ -41,9 +59,9 @@ class Detection:
         consumer = kafka.KafkaConsumer(con_topic, bootstrap_servers='localhost:9092', auto_offset_reset='earliest',
                                        group_id='grp_detection', consumer_timeout_ms=2000)
         consumer.poll()
-        # PyTorch
-        model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/signs/weights.pt')
         consumer.topics()
+        lock = threading.Lock()
+        models = [self.vehicles_model, self.signs_model]
 
         while True:
 
@@ -71,17 +89,17 @@ class Detection:
                 # Convert image
                 frame = frame_temp.reshape((h, w, 3))
 
+                classes = {}
+
                 # Detection
                 det_s = time.perf_counter()
-                results = model(frame)
-                self.gauge_detection_time.set(time.perf_counter() - det_s)
+                threads = [threading.Thread(target=self.yolo_detect, args=[model, frame, classes, lock]) for model in models]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
 
-                names = results.names
-                preds = results.xyxy[0].numpy()
-                sorted_dets = [[] for _ in range(len(names))]
-                for i in preds:
-                    sorted_dets[int(i[5])].append(i[0: 5].tolist())
-                classes = {names[i]: n for i, n in enumerate(sorted_dets) if len(n) > 0}
+                self.gauge_detection_time.set(time.perf_counter() - det_s)
 
                 detection_message = {
                     "frame_n": msg_dict["frame_n"],
