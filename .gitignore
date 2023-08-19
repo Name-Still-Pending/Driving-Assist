@@ -1,7 +1,6 @@
 /mydata/
 /poročila/
 /video/
-docker-compose.yaml
 /object_recognition/yolov5n.pt
 /video_provider/data/
 /object_recognition/yolov5s.pt
