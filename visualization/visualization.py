@@ -59,7 +59,10 @@ class Visualization:
         self.thread_det = threading.Thread(target=lambda: self.__thread_detection())
         self.names = ['vehicle_ign', 'vehicle_l', 'vehicle_r', 'vehicle_s']
         self.colors = {
-            n: np.random.randint(0, 256, 3).tolist() for n in self.names
+            'vehicle_ign': (128, 128, 128),
+            'vehicle_l': (255, 0, 0),
+            'vehicle_r': (0, 255, 0),
+            'vehicle_s': (0, 0, 255)
         }
         signal.signal(signal.SIGINT, self.__sigint_handler)
 
