@@ -35,7 +35,7 @@ services:
         hard: 65536
   # Start Kafka
   kafka:
-    build: Kafka
+    build: comm/Kafka
     image: wurstmeister/kafka
     container_name: kafka
     ports:

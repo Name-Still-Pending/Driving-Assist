@@ -1,6 +1,6 @@
 /mydata/
 /poročila/
 /video/
-/object_recognition/yolov5n.pt
-/video_provider/data/
-/object_recognition/yolov5s.pt
+/backend/object_recognition/yolov5n.pt
+/backend/video_provider/data/
+/backend/object_recognition/yolov5s.pt
