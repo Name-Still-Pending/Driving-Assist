@@ -8,15 +8,12 @@
 		<meta charset="UTF-8"><meta>
 	</head>
 	<body>
-            <!-- <script src="three.min.js"></script> --> 
-            <!--<script type="module" src="three.module.min.js"></script>
             <script type="module" src="OBJLoader.js"></script>
             <script type="module" src="MTLLoader.js"></script>-->
             <script  type="module">
-                //import * as THREE from './three.module.min.js'; 
-                import * as THREE from './three.js'
-                import { OBJLoader } from './OBJLoader.js';
-                import { MTLLoader } from './MTLLoader.js';
+                import * as THREE from 'three'
+                import { OBJLoader } from './src/OBJLoader.js';
+                import { MTLLoader } from './src/MTLLoader.js';
                 var renderer = new THREE.WebGLRenderer();
                 renderer.shadowMap.enabled = true;
                 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -31,11 +28,11 @@
 
 
                 new MTLLoader().
-                    load( 'x.mtl', function ( materials ) {
+                    load( 'res/x.mtl', function ( materials ) {
                                                 materials.preload();
                                                 new OBJLoader()
                                                         .setMaterials( materials )
-                                                        .load( 'x.obj', 
+                                                        .load( 'res/x.obj',
                             
                             function ( object ) {
                                 monkey=object;
