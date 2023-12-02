@@ -106,6 +106,7 @@ function ParserState() {
 
 						clone: function ( index ) {
 
+							// noinspection JSPotentiallyInvalidUsageOfThis
 							const cloned = {
 								index: ( typeof index === 'number' ? index : this.index ),
 								name: this.name,

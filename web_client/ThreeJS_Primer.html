@@ -1,4 +1,4 @@
-<html>
+<html lang="en">
 	<head>
 		<title>Primer s sencami</title>
 		<style>
@@ -30,7 +30,8 @@
                 new MTLLoader().
                     load( 'res/x.mtl', function ( materials ) {
                                                 materials.preload();
-                                                new OBJLoader()
+                                                // noinspection JSUnusedLocalSymbols
+					new OBJLoader()
                                                         .setMaterials( materials )
                                                         .load( 'res/x.obj',
                             

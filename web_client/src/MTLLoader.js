@@ -84,6 +84,7 @@ class MTLLoader extends Loader {
 	 * Parses a MTL file.
 	 *
 	 * @param {String} text - Content of MTL file
+	 * @param path
 	 * @return {MaterialCreator}
 	 *
 	 * @see setPath setResourcePath
