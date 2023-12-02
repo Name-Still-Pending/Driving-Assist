@@ -808,7 +808,7 @@ class OBJLoader extends Loader {
 						}
 
 						material.name = sourceMaterial.name;
-						material.flatShading = sourceMaterial.smooth ? false : true;
+						material.flatShading = !sourceMaterial.smooth;
 						material.vertexColors = hasVertexColors;
 
 						state.materials[ materialHash ] = material;
