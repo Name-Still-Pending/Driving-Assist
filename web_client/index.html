@@ -125,7 +125,7 @@
         let display = new DisplayManager('OpenGlDisplay');
 
         display.addModule(new Environment("Base", [
-            new MeshLoadData("./res/x.obj", new T.Vector3(-1,1,0), new T.Vector3())
+            new MeshLoadData("./res/Caravan.obj", new T.Vector3(-1,1,0), new T.Vector3())
         ]))
 
         // test code, should be implemented with Environment class
@@ -145,8 +145,8 @@
         }
 
         var cube2 = new T.Mesh(
-            new T.BoxGeometry(10, 1, 10),
-            new T.MeshLambertMaterial({ color: 0xffaaaa })
+            new T.BoxGeometry(100, 1, 100),
+            new T.MeshLambertMaterial({ color: 0x4d4d4d })
         );
 
 
@@ -161,7 +161,8 @@
 
 
         // init
-        display.camera.translateZ(5);
+        display.camera.translateZ(15);
+        display.camera.translateY(5);
         display.initAll();
         var animate = function () {
             requestAnimationFrame(animate);
