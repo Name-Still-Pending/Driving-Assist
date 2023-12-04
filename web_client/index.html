@@ -1,11 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="height: 100%">
 <head>
     <meta charset="UTF-8">
     <title>Mili</title>
 </head>
-<body>
-    <h1>andraž je čudn</h1>
+<body style="height: 100%; margin: 0">
+    <div id="OpenGlDisplay" style="height: 100%"></div>
+
+    <script type="module">
+        import * as T from 'three';
+        import {DisplayManager} from './src/DisplayManager'
+        import {Environment} from "./src/Environment";
+        import {MeshLoadData} from "./src/BaseClasses";
+
+        let display = new DisplayManager('OpenGlDisplay');
+
+        display.addModule(new Environment("Base", [
+            new MeshLoadData("./res/x.obj", new T.Vector3(-1,1,0), new T.Vector3())
+        ]))
+
+        // test code, should be implemented with Environment class
+
+        display.scene.add(new T.AmbientLight(0xffffff, 0.2));
+        {//luč, najbolje directional light (sonce), najmanj težav
+            var light = new T.DirectionalLight( 0xffffff, 0.5 );
+            light.castShadow = true;
+            light.position.set( 0, 10, 0 );
+            light.shadow.camera.near = 0.1;
+            light.shadow.camera.far = 1000;
+
+            light.shadow.mapSize.width = 512;
+            light.shadow.mapSize.height = 512;
+
+            display.scene.add(light);
+        }
+
+        var cube2 = new T.Mesh(
+            new T.BoxGeometry(10, 1, 10),
+            new T.MeshLambertMaterial({ color: 0xffaaaa })
+        );
+
+
+        cube2.castShadow=true;//obvezno za vsak objekt!
+        cube2.receiveShadow=true;//obvezno za vsak objekt!
+
+        cube2.position.y=-2;
+
+
+        display.scene.add(cube2);
+        // end of test code
+
+
+        // init
+        display.camera.translateZ(5);
+        display.initAll();
+        var animate = function () {
+            requestAnimationFrame(animate);
+
+            display.update();
+        };
+        animate();
+    </script>
 
 </body>
 </html>
