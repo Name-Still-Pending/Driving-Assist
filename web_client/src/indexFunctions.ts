@@ -20,3 +20,4 @@ function selectFunc(text) {
     var x = document.getElementById("currentFunc");
     x.innerHTML = text;
 }
+
