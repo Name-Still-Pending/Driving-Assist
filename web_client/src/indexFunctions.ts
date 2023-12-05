@@ -1,9 +1,14 @@
+let camBool = true;
+let outBool = true;
+
 function toggleCam() {
     var x = document.getElementById("CamToggle");
     if (x.innerHTML === "Camera") {
         x.innerHTML = "Utility";
+        camBool = false;
     } else {
         x.innerHTML = "Camera";
+        camBool = true;
     }
 }
 

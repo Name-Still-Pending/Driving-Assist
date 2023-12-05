@@ -14,6 +14,7 @@ export class DisplayManager{
     private domElement: HTMLElement
     private raycaster: T.Raycaster
     private pointer: T.Vector2
+    public cam = true;
 
     private _modules: {};
     constructor(elementId: string) {
@@ -34,7 +35,7 @@ export class DisplayManager{
         this.renderer.setSize(this.domElement.clientWidth, this.domElement.clientHeight);
         this.domElement.appendChild(this.renderer.domElement);
         this.renderer.domElement.addEventListener("mousemove", (event) => {this.onPointerMove(event)});
-        this.renderer.domElement.addEventListener("mousedown", (event) => {this.render()});
+        this.renderer.domElement.addEventListener("mousedown", (event) => {this.onMouseDown()});
         this.renderer.domElement.addEventListener( 'resize', (event) => {this.onWindowResize()});
 
         this._scene = new T.Scene();
@@ -127,22 +128,21 @@ export class DisplayManager{
         // calculate pointer position in normalized device coordinates
         // (-1 to +1) for both components
 
-        this.pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-        this.pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+        this.pointer.x = (event.clientX - this.renderer.domElement.clientLeft) / (this.renderer.domElement.width / 2) - 1;
+        this.pointer.y = - (event.clientY  - this.renderer.domElement.clientTop) / (this.renderer.domElement.height / 2) + 1;
 
     }
 
-    render() {
+    onMouseDown() {
+        if (!this.cam)  {
+            // update the picking ray with the camera and pointer position
+            this.raycaster.setFromCamera(this.pointer, this.camera);
 
-        // update the picking ray with the camera and pointer position
-        this.raycaster.setFromCamera(this.pointer, this.camera);
-
-        // calculate objects intersecting the picking ray
-        const intersects = this.raycaster.intersectObjects(this.scene.children);
-        if(0 < intersects.length) {
-            console.log(intersects[0].object.name);
+            // calculate objects intersecting the picking ray
+            const intersects = this.raycaster.intersectObjects(this.scene.children);
+            if(0 < intersects.length) {
+                console.log(intersects[0].object.name);
+            }
         }
     }
-
-
 }

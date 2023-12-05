@@ -121,6 +121,7 @@
         import {DisplayManager} from './src/DisplayManager'
         import {Environment} from "./src/Environment";
         import {MeshLoadData} from "./src/BaseClasses";
+        import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
         let display = new DisplayManager('OpenGlDisplay');
 
@@ -160,12 +161,29 @@
         // end of test code
 
 
+
         // init
         display.camera.translateZ(15);
         display.camera.translateY(5);
         display.initAll();
+
+        const controls = new OrbitControls( display.camera, document.getElementById("OpenGlDisplay"));
+        controls.target.set( 0, 0.5, 0 );
+        controls.enablePan = false;
+        controls.enableDamping = true;
+
         var animate = function () {
             requestAnimationFrame(animate);
+
+            if (camBool === true) {
+                display.cam = true;
+                controls.enabled = true;
+                controls.update();
+            }
+            else {
+                display.cam = false;
+                controls.enabled = false;
+            }
 
             display.update();
         };
