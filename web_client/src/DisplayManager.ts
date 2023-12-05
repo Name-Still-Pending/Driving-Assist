@@ -12,7 +12,8 @@ export class DisplayManager{
     private _scene: T.Scene
     private renderer: T.WebGLRenderer
     private domElement: HTMLElement
-
+    private raycaster: T.Raycaster
+    private pointer: T.Vector2
 
     private _modules: {};
     constructor(elementId: string) {
@@ -25,14 +26,19 @@ export class DisplayManager{
             console.error(elementId + " is not a div.");
             return;
         }
+        this.pointer = new T.Vector2();
+        this.raycaster = new T.Raycaster();
         this.renderer = new T.WebGLRenderer();
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = T.PCFSoftShadowMap;
         this.renderer.setSize(this.domElement.clientWidth, this.domElement.clientHeight);
         this.domElement.appendChild(this.renderer.domElement);
+        this.renderer.domElement.addEventListener("mousemove", (event) => {this.onPointerMove(event)});
+        this.renderer.domElement.addEventListener("mousedown", (event) => {this.render()});
+        this.renderer.domElement.addEventListener( 'resize', (event) => {this.onWindowResize()});
 
         this._scene = new T.Scene();
-        this._camera = new T.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this._camera = new T.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 100);
 
         this._modules = {};
     }
@@ -110,4 +116,33 @@ export class DisplayManager{
             if (!module.initialized) module.init(this);
         }
     }
+
+    onWindowResize() {
+        this.renderer.setSize( window.innerWidth, window.innerHeight );
+
+    }
+
+
+    onPointerMove(event) {
+        // calculate pointer position in normalized device coordinates
+        // (-1 to +1) for both components
+
+        this.pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+        this.pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    }
+
+    render() {
+
+        // update the picking ray with the camera and pointer position
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+
+        // calculate objects intersecting the picking ray
+        const intersects = this.raycaster.intersectObjects(this.scene.children);
+        if(0 < intersects.length) {
+            console.log(intersects[0].object.name);
+        }
+    }
+
+
 }
