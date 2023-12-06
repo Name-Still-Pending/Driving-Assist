@@ -119,15 +119,12 @@
     <script type="module">
         import * as T from 'three';
         import {DisplayManager} from './src/DisplayManager'
-        import {Environment} from "./src/Environment";
-        import {MeshLoadData} from "./src/BaseClasses";
+        import {TurnLever} from "./src/turn_lever/TurnLever";
         import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
         let display = new DisplayManager('OpenGlDisplay');
 
-        display.addModule(new Environment("Base", [
-            new MeshLoadData("./res/Caravan.obj", new T.Vector3(-1,1,0), new T.Vector3())
-        ]))
+        display.addModule(new TurnLever());
 
         // test code, should be implemented with Environment class
 
