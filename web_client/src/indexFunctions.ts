@@ -16,8 +16,10 @@ function toggleEnv() {
     var x = document.getElementById("EnvToggle");
     if (x.innerHTML === "Outside") {
         x.innerHTML = "Inside";
+        outBool = false;
     } else {
         x.innerHTML = "Outside";
+        outBool = true;
     }
 }
 

@@ -120,7 +120,6 @@
         import * as T from 'three';
         import {DisplayManager} from './src/DisplayManager'
         import {TurnLever} from "./src/turn_lever/TurnLever";
-        import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
         import {CarLoad} from "./src/CarLoad";
 
         let display = new DisplayManager('OpenGlDisplay');
@@ -166,22 +165,21 @@
         display.camera.translateY(5);
         display.initAll();
 
-        const controls = new OrbitControls( display.camera, document.getElementById("OpenGlDisplay"));
-        controls.target.set( 0, 0.5, 0 );
-        controls.enablePan = false;
-        controls.enableDamping = true;
+
 
         var animate = function () {
             requestAnimationFrame(animate);
-
             if (camBool === true) {
                 display.cam = true;
-                controls.enabled = true;
-                controls.update();
             }
             else {
                 display.cam = false;
-                controls.enabled = false;
+            }
+            if (outBool === true) {
+                display.out = true;
+            }
+            else {
+                display.out = false;
             }
 
             display.update();

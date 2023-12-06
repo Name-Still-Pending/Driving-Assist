@@ -5,6 +5,7 @@ import {MTLLoader} from "three/examples/jsm/loaders/MTLLoader";
 // @ts-ignore
 import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
 import {MOUSE} from "three";
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
 export class DisplayManager{
     static ACTION_RIGHT_CLICK = "right_click"
@@ -18,7 +19,10 @@ export class DisplayManager{
     private domElement: HTMLElement
     private raycaster: T.Raycaster
     private pointer: T.Vector2
-    public cam = true;
+    private controls: OrbitControls;
+    private cam = true;
+    private out = true;
+    private inside = false;
 
     private _modules: {};
     constructor(elementId: string) {
@@ -46,11 +50,41 @@ export class DisplayManager{
         this.renderer.domElement.addEventListener( 'resize', (event) => {this.onWindowResize()});
         this._scene = new T.Scene();
 
-        this._camera = new T.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 100);
+        this._camera = new T.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100);
         this._modules = {};
+        this.controls = new OrbitControls( this.camera, document.getElementById("OpenGlDisplay"));
+        this.controls.target.set( 0, 0.5, 0 );
+        this.controls.enablePan = false;
+        this.controls.enableDamping = true;
+
     }
 
     update(){
+        if (this.cam === true) {
+            this.controls.enabled = true;
+            this.controls.update();
+        }
+        else {
+            this.controls.enabled = false;
+        }
+        if (this.out === true) {
+            if (this.inside === true) {
+                this.controls.target.set( 0, 0.5, 0 );
+                this.inside = false;
+            }
+            this.controls.minDistance = 5;
+            this.controls.maxDistance = 50;
+        }
+        else {
+            if (this.inside === false) {
+                this.controls.target.set( -0.75, 1, 0.6 );
+                this.inside = true;
+            }
+            this.controls.minDistance = 0.1;
+            this.controls.maxDistance = 0.1;
+        }
+
+
         this.renderer.clear(true);
         this.renderer.render(this._scene, this._camera);
     }
