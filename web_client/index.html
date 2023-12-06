@@ -121,10 +121,12 @@
         import {DisplayManager} from './src/DisplayManager'
         import {TurnLever} from "./src/turn_lever/TurnLever";
         import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
+        import {CarLoad} from "./src/CarLoad";
 
         let display = new DisplayManager('OpenGlDisplay');
 
         display.addModule(new TurnLever());
+        display.addModule(new CarLoad());
 
         // test code, should be implemented with Environment class
 

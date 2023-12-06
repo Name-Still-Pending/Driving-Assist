@@ -18,7 +18,7 @@ export class TurnLever extends Environment{
 
         this.meshList = [{
             path: "./src/turn_lever/turn_lever_004.obj",
-            pos: new T.Vector3(0, 0, 2),
+            pos: new T.Vector3(-0.5, 0.4, -1),
             rot: new T.Vector3(0, -Math.PI * 0.5, Math.PI * 0.6),
             events: [
                 {type: DisplayManager.ACTION_RIGHT_CLICK, listener: (event) => {
