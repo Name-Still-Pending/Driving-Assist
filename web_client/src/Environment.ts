@@ -3,12 +3,12 @@ import {DisplayManager} from "./DisplayManager";
 import * as T from 'three';
 
 export class Environment extends BaseModule{
-    private objects: T.Object3D[];
-    protected readonly meshList: MeshLoadData[];
+    protected objects: T.Object3D[];
+    protected meshList: MeshLoadData[];
 
-    constructor(name: string, loadData: MeshLoadData[]) {
+    constructor(name: string, loadData?: MeshLoadData[]) {
         super("Environment_" + name);
-        this.meshList = loadData;
+        if (loadData != undefined) this.meshList = loadData;
         this.objects = new Array<T.Object3D>();
     }
 
@@ -31,7 +31,7 @@ export class Environment extends BaseModule{
 
     protected loadObjects(display: DisplayManager, parent?: T.Object3D){
         for (const data of this.meshList) {
-            display.loadOBJ(data.path, data.pos, data.rot, parent, this.objects);
+            display.loadOBJ(data.path, data.pos, data.rot, parent, this.objects, data.events);
         }
     }
 

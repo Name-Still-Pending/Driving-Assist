@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "baseUrl": "web_client",
+    "target": "ESNext",
+    "moduleResolution": "nodenext",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ]
+  },
+}

@@ -1,6 +1,4 @@
 import * as T from 'three';
-import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
-import {MTLLoader} from "three/examples/jsm/loaders/MTLLoader";
 import {DisplayManager} from "./DisplayManager";
 import {Vector3} from "three";
 
@@ -9,12 +7,18 @@ import {Vector3} from "three";
  * Template class for features.
  *
  */
-export abstract class BaseModule {
+export abstract class BaseModule extends T.EventDispatcher<any>{
     public readonly id: string;
     private _initialized = false;
-    protected _deps: Dependency[];
+    private _deps: Dependency[] = null;
     protected constructor(id: string) {
+        super()
         this.id = id;
+    }
+
+    protected initDeps(deps: Dependency[], inherit: Boolean = true){
+        if(this._deps == null || !inherit) this._deps = deps;
+        else this._deps = this._deps.concat(deps)
     }
 
     get deps(){
@@ -36,14 +40,14 @@ export abstract class BaseModule {
 
 export class MeshLoadData{
     readonly path: string;
-    readonly pos: T.Vector3;
-    readonly rot: T.Vector3;
+    readonly pos: T.Vector3 = new T.Vector3();
+    readonly rot: T.Vector3 = new T.Vector3();
+    readonly events?: EventListenerBinding[]
+}
 
-    constructor(path: string, pos: Vector3, rot: Vector3) {
-        this.path = path;
-        this.pos = pos;
-        this.rot = rot;
-    }
+export class EventListenerBinding{
+    public type: string;
+    public listener: T.EventListener<any, any, any>;
 }
 
 export class Dependency{

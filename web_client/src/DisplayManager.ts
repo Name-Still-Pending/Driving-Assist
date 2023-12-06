@@ -1,10 +1,14 @@
 import * as T from 'three'
-import {BaseModule} from "./BaseClasses";
+import {BaseModule, EventListenerBinding} from "./BaseClasses";
+// @ts-ignore
 import {MTLLoader} from "three/examples/jsm/loaders/MTLLoader";
+// @ts-ignore
 import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
-import {Scene} from "three";
+import {MOUSE} from "three";
 
 export class DisplayManager{
+    static ACTION_RIGHT_CLICK = "right_click"
+    static ACTION_LEFT_CLICK = "left_click"
     get modules(): {} {
         return this._modules;
     }
@@ -33,18 +37,21 @@ export class DisplayManager{
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = T.PCFSoftShadowMap;
         this.renderer.setSize(this.domElement.clientWidth, this.domElement.clientHeight);
+        this.renderer.setClearColor(new T.Color(0x1b1bff))
+        this.renderer.domElement.oncontextmenu = (event) => false;
         this.domElement.appendChild(this.renderer.domElement);
-        this.renderer.domElement.addEventListener("mousemove", (event) => {this.onPointerMove(event)});
-        this.renderer.domElement.addEventListener("mousedown", (event) => {this.onMouseDown()});
+        // this.renderer.domElement.addEventListener("mousemove", (event) => {this.onPointerMove(event)});
+        // // this.renderer.domElement.addEventListener("mousedown", (event) => {this.onMouseDown()});
+        this.renderer.domElement.addEventListener("mousedown", (event) => this.onMouseInteractClick(event))
         this.renderer.domElement.addEventListener( 'resize', (event) => {this.onWindowResize()});
-
         this._scene = new T.Scene();
-        this._camera = new T.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 100);
 
+        this._camera = new T.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 100);
         this._modules = {};
     }
 
     update(){
+        this.renderer.clear(true);
         this.renderer.render(this._scene, this._camera);
     }
 
@@ -52,7 +59,7 @@ export class DisplayManager{
         return this._camera;
     }
 
-    get scene(): Scene {
+    get scene(): T.Scene {
         return this._scene;
     }
 
@@ -69,7 +76,7 @@ export class DisplayManager{
         if (init) module.init(this);
     }
 
-    loadOBJ(path: string, pos: T.Vector3, rot: T.Vector3, parent: T.Object3D = this._scene, objArray: T.Object3D[]): void {
+    loadOBJ(path: string, pos: T.Vector3, rot: T.Vector3, parent: T.Object3D = this._scene, objArray: T.Object3D[], callback?: EventListenerBinding[]): void {
         let lastDot = path.lastIndexOf('.');
         if (lastDot > 0) path = path.substring(0, lastDot);
 
@@ -87,12 +94,19 @@ export class DisplayManager{
                                 object.traverse((child) => {
                                     if(child instanceof T.Mesh){
                                         console.log("Loaded mesh: " + child.name);
+                                        child.receiveShadow = true;
+                                        child.castShadow = true;
+                                        if(callback != undefined) {
+                                            for (const binding of callback) {
+                                                child.addEventListener(binding.type, binding.listener);
+                                            }
+                                        }
                                     }
                                 });
                                 object.position.copy(pos);
-                                object.rotateX(rot.x);
-                                object.rotateY(rot.y);
-                                object.rotateZ(rot.z);
+                                object.rotateOnWorldAxis(new T.Vector3(1, 0, 0), rot.x);
+                                object.rotateOnWorldAxis(new T.Vector3(0, 1, 0), rot.y);
+                                object.rotateOnWorldAxis(new T.Vector3(0, 0, 1), rot.z);
                                 object.receiveShadow = true;
                                 object.castShadow = true;
                                 object.updateMatrix();
@@ -111,6 +125,35 @@ export class DisplayManager{
                 })
     }
 
+    onMouseInteractClick(event: MouseEvent){
+        let e: string;
+        switch (event.button){
+            case MOUSE.LEFT:
+                e = DisplayManager.ACTION_LEFT_CLICK;
+                break;
+            case MOUSE.RIGHT:
+                e = DisplayManager.ACTION_RIGHT_CLICK;
+                break;
+            default:
+                return;
+        }
+        let rect = this.renderer.domElement.getBoundingClientRect()
+        let pointer = new T.Vector2(
+            (event.clientX - rect.left) / (rect.width / 2) - 1,
+            -(event.clientY - rect.top) / (rect.height / 2) + 1
+        )
+
+        console.log(`click at (${pointer.x}, ${pointer.y})`)
+        let ray = new T.Raycaster();
+        ray.setFromCamera(pointer, this.camera);
+        let collisions = ray.intersectObjects(this.scene.children, true);
+        if(collisions.length < 1) return;
+        let object = collisions[0].object;
+        if(object instanceof T.Mesh){
+            object.dispatchEvent({type: e});
+        }
+    }
+
     initAll(){
         for (const key in this._modules) {
             let module = this._modules[key];
@@ -120,29 +163,5 @@ export class DisplayManager{
 
     onWindowResize() {
         this.renderer.setSize( window.innerWidth, window.innerHeight );
-
-    }
-
-
-    onPointerMove(event) {
-        // calculate pointer position in normalized device coordinates
-        // (-1 to +1) for both components
-
-        this.pointer.x = (event.clientX - this.renderer.domElement.clientLeft) / (this.renderer.domElement.width / 2) - 1;
-        this.pointer.y = - (event.clientY  - this.renderer.domElement.clientTop) / (this.renderer.domElement.height / 2) + 1;
-
-    }
-
-    onMouseDown() {
-        if (!this.cam)  {
-            // update the picking ray with the camera and pointer position
-            this.raycaster.setFromCamera(this.pointer, this.camera);
-
-            // calculate objects intersecting the picking ray
-            const intersects = this.raycaster.intersectObjects(this.scene.children);
-            if(0 < intersects.length) {
-                console.log(intersects[0].object.name);
-            }
-        }
     }
 }
