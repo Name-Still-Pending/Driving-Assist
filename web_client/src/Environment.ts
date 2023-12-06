@@ -2,7 +2,7 @@ import {BaseModule, MeshLoadData} from "./BaseClasses";
 import {DisplayManager} from "./DisplayManager";
 import * as T from 'three';
 
-export class Environment extends BaseModule{
+export abstract class Environment extends BaseModule{
     protected objects: T.Object3D[];
     protected meshList: MeshLoadData[];
 
