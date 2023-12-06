@@ -126,31 +126,33 @@ export class DisplayManager{
     }
 
     onMouseInteractClick(event: MouseEvent){
-        let e: string;
-        switch (event.button){
-            case MOUSE.LEFT:
-                e = DisplayManager.ACTION_LEFT_CLICK;
-                break;
-            case MOUSE.RIGHT:
-                e = DisplayManager.ACTION_RIGHT_CLICK;
-                break;
-            default:
-                return;
-        }
-        let rect = this.renderer.domElement.getBoundingClientRect()
-        let pointer = new T.Vector2(
-            (event.clientX - rect.left) / (rect.width / 2) - 1,
-            -(event.clientY - rect.top) / (rect.height / 2) + 1
-        )
+        if (!this.cam) {
+            let e: string;
+            switch (event.button){
+                case MOUSE.LEFT:
+                    e = DisplayManager.ACTION_LEFT_CLICK;
+                    break;
+                case MOUSE.RIGHT:
+                    e = DisplayManager.ACTION_RIGHT_CLICK;
+                    break;
+                default:
+                    return;
+            }
+            let rect = this.renderer.domElement.getBoundingClientRect()
+            let pointer = new T.Vector2(
+                (event.clientX - rect.left) / (rect.width / 2) - 1,
+                -(event.clientY - rect.top) / (rect.height / 2) + 1
+            )
 
-        console.log(`click at (${pointer.x}, ${pointer.y})`)
-        let ray = new T.Raycaster();
-        ray.setFromCamera(pointer, this.camera);
-        let collisions = ray.intersectObjects(this.scene.children, true);
-        if(collisions.length < 1) return;
-        let object = collisions[0].object;
-        if(object instanceof T.Mesh){
-            object.dispatchEvent({type: e});
+            console.log(`click at (${pointer.x}, ${pointer.y})`)
+            let ray = new T.Raycaster();
+            ray.setFromCamera(pointer, this.camera);
+            let collisions = ray.intersectObjects(this.scene.children, true);
+            if(collisions.length < 1) return;
+            let object = collisions[0].object;
+            if(object instanceof T.Mesh){
+                object.dispatchEvent({type: e});
+            }
         }
     }
 
