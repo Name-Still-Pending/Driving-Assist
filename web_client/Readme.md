@@ -11,3 +11,5 @@ Ogrodje trenutno obsega:
 * [Feature.ts](src/Feature.ts), ki vsebuje razrede za implementacijo funkcionalnosti.
 
 Primere uporabe najdete v [index.html](index.html), [TurnLever.ts](src/turn_lever/TurnLever.ts) in [CarLoad.ts](src/CarLoad.ts).
+
+Za preizkus zaženite vite in pojdte na naslov http://localhost:5173/. Navigacijska vrstica na vrhu omogoča spreminjanje med pogledom od zunaj/znotraj vozila in izbiranje načina interakcije med premikanjem kamere in klikanja na okolje. Levo / desno klikanje na ročico za smerne utripalke bo le-to premaknilo dol ali gor.
