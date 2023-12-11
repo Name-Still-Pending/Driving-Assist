@@ -117,13 +117,13 @@
     <script type="module">
         import * as T from 'three';
         import {DisplayManager} from './src/DisplayManager'
-        import {TurnLever} from "./src/turn_lever/TurnLever";
+        import {getTurnIndicatorFeature} from "./src/turn_lever/TurnLever";
         import {CarLoad} from "./src/CarLoad";
 
         let display = new DisplayManager('OpenGlDisplay');
 
-        display.addModule(new TurnLever());
         display.addModule(new CarLoad());
+        display.addFeature(getTurnIndicatorFeature());
 
         // test code, should be implemented with Environment class
 

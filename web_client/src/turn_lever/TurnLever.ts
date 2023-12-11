@@ -1,6 +1,7 @@
 import {Environment} from "../Environment";
 import {DisplayManager} from "../DisplayManager";
 import * as T from "three";
+import {Feature, ModuleData} from "../Feature";
 
 
 enum LeverState{
@@ -58,4 +59,9 @@ export class TurnLever extends Environment{
 
         // this._leverMesh = this.objects[0].children[0] as T.Mesh;
     }
+}
+
+export function getTurnIndicatorFeature(): Feature{
+    return new Feature("TurnIndicatorFeature",
+        [new ModuleData<any>(TurnLever)])
 }

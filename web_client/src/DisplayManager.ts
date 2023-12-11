@@ -7,8 +7,13 @@ import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
 import {MOUSE} from "three";
 // @ts-ignore
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
+import {Feature} from "./Feature";
+
 
 export class DisplayManager{
+    get features(): Feature[] {
+        return this._features;
+    }
     static ACTION_RIGHT_CLICK = "right_click"
     static ACTION_LEFT_CLICK = "left_click"
     get modules(): {} {
@@ -18,12 +23,12 @@ export class DisplayManager{
     private _scene: T.Scene
     private renderer: T.WebGLRenderer
     private domElement: HTMLElement
-    private raycaster: T.Raycaster
-    private pointer: T.Vector2
     private controls: OrbitControls;
     private cam = true;
     private out = true;
     private inside = false;
+
+    private _features: Feature[]
 
     private _modules: {};
     constructor(elementId: string) {
@@ -36,8 +41,6 @@ export class DisplayManager{
             console.error(elementId + " is not a div.");
             return;
         }
-        this.pointer = new T.Vector2();
-        this.raycaster = new T.Raycaster();
         this.renderer = new T.WebGLRenderer();
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -53,6 +56,7 @@ export class DisplayManager{
 
         this._camera = new T.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
         this._modules = {};
+        this._features = new Array<Feature>();
         this.controls = new OrbitControls( this.camera, document.getElementById("OpenGlDisplay"));
         this.controls.target.set( 0, -0.5, 0 );
         this.controls.enablePan = false;
@@ -108,6 +112,11 @@ export class DisplayManager{
         }
         this._modules[module.id] = module;
         if (init) module.init(this);
+    }
+
+    addFeature(feature: Feature){
+        feature.init(this);
+        this._features.push(feature);
     }
 
     loadOBJ(path: string, pos: T.Vector3, rot: T.Vector3, parent: T.Object3D = this._scene, objArray: T.Object3D[], callback?: EventListenerBinding[]): void {

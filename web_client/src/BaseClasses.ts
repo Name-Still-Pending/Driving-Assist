@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {DisplayManager} from "./DisplayManager";
 import {Vector3} from "three";
+import {Feature} from "./Feature";
 
 /**
  * @class BaseModule
@@ -10,19 +11,11 @@ import {Vector3} from "three";
 export abstract class BaseModule extends T.EventDispatcher<any>{
     public readonly id: string;
     private _initialized = false;
-    private _deps: Dependency[] = null;
+    public users: string[];
     protected constructor(id: string) {
         super()
         this.id = id;
-    }
-
-    protected initDeps(deps: Dependency[], inherit: Boolean = true){
-        if(this._deps == null || !inherit) this._deps = deps;
-        else this._deps = this._deps.concat(deps)
-    }
-
-    get deps(){
-        return this._deps;
+        this.users = new Array<string>();
     }
 
     get initialized(){
@@ -50,13 +43,3 @@ export class EventListenerBinding{
     public listener: T.EventListener<any, any, any>;
 }
 
-export class Dependency{
-    readonly id: string;
-    readonly type: InstanceType<any>;
-
-
-    constructor(id: string, type: InstanceType<any>) {
-        this.id = id;
-        this.type = type;
-    }
-}
