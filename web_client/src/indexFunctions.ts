@@ -3,7 +3,7 @@ let outBool = true;
 
 function toggleCam() {
     var x = document.getElementById("CamToggle");
-    if (x.innerHTML === "Camera") {
+    if (x.innerHTML == "Camera") {
         x.innerHTML = "Utility";
         camBool = false;
     } else {
@@ -14,7 +14,7 @@ function toggleCam() {
 
 function toggleEnv() {
     var x = document.getElementById("EnvToggle");
-    if (x.innerHTML === "Outside") {
+    if (x.innerHTML == "Outside") {
         x.innerHTML = "Inside";
         outBool = false;
     } else {

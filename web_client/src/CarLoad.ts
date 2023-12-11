@@ -13,7 +13,12 @@ export class CarLoad extends Environment{
             path: "./res/Caravan.obj",
             pos: new T.Vector3(0, -1.5, 0),
             rot: new T.Vector3(0, Math.PI, 0),
-        }];
+        },
+            {
+                path: "./res/Painel.obj",
+                pos: new T.Vector3(0, -0.9, -0.9),
+                rot: new T.Vector3(0, 0, 0),
+            }];
     }
 
     init(display: DisplayManager) {
