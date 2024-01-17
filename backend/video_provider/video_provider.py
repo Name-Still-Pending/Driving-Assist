@@ -5,6 +5,7 @@ import redis
 import signal
 import time
 import kafka
+from kafka.errors import KafkaError
 import json
 import encoding.JSON as je
 from frame_modifier import FrameModifier
@@ -14,7 +15,7 @@ class VideoProvider:
     def __init__(self, video_input):
         self.lock = threading.Lock()
         self.video_input = video_input
-        self.vc = cv2.VideoCapture(video_input)
+        self.vc: cv2.VideoCapture = cv2.VideoCapture(video_input)
         self.default_fps = self.vc.get(cv2.CAP_PROP_FPS)
         self.fps = self.default_fps
         self.default_frame_duration = 1 / self.default_fps
@@ -77,7 +78,8 @@ class VideoProvider:
             future = producer.send(topic, je.encode_bin(message), timestamp_ms=int(time.time() * 1000))
             try:
                 rm = future.get(timeout=10)
-            except kafka.KafkaError:
+            except KafkaError as e:
+                print(e)
                 pass
 
             f_time = time.perf_counter() - f_start

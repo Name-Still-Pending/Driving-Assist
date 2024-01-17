@@ -14,7 +14,7 @@ services:
     ports:
      - "9090:9090"
     volumes:
-     - ./Prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+     - ./comm/Prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     extra_hosts:
      - "host.docker.internal:host-gateway"
   # Start Grafana

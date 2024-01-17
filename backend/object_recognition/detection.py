@@ -29,8 +29,8 @@ class Detection:
         self.event = threading.Event()
         self.thread = threading.Thread(target=lambda: self.thread_do_work())
 
-        self.vehicles_model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/best.pt')
-        self.signs_model = torch.hub.load("../yolov5", 'custom', source='local', path='weights/signs/weights.pt')
+        self.vehicles_model = torch.hub.load("ultralytics/yolov5", 'custom', path='weights/best.pt')
+        self.signs_model = torch.hub.load("ultralytics/yolov5", 'custom', path='weights/signs/weights.pt')
 
     @staticmethod
     def yolo_detect(model, frame, output, lock) -> None:
@@ -38,7 +38,7 @@ class Detection:
         results = model(frame)
         # print('detection end')
         names = results.names
-        preds = results.xyxy[0].numpy()
+        preds = results.xywhn[0].numpy()
         sorted_dets = [list() for _ in range(len(names))]
         for i in preds:
             sorted_dets[int(i[5])].append(i[0: 5].tolist())
